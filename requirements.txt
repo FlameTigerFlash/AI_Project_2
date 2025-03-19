@@ -1,0 +1,7 @@
+soundfile
+torch
+whisper
+sounddevice
+scipy
+torchaudio
+omegaconf

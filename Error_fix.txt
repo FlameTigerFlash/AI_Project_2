@@ -1,0 +1,3 @@
+SpeachToText.py:
+https://stackoverflow.com/questions/29760718/installation-of-ffmpeg-for-python-in-windows
+- не находит файл, нужна установка ffmpeg.
