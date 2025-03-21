@@ -2,7 +2,7 @@ import torch
 import soundfile as sf
 
 
-def TTS(text: str, language:str, put_acccent:bool = False, filename='output.wav'):
+def TTS(text: str, language:str = 'ru', put_acccent:bool = False, filename='output.wav'):
     # Загрузка модели
     model, _ = torch.hub.load(
         repo_or_dir='snakers4/silero-models',
