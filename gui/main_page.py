@@ -2,6 +2,9 @@ import streamlit as st  # Импортируем библиотеку Streamlit 
 import pandas as pd  # Импортируем библиотеку pandas для работы с данными.
 import os  # Импортируем библиотеку для работы с операционной системой, например, для работы с файлами.
 import uuid  # Импортируем библиотеку для генерации уникальных идентификаторов.
+from LLM.AImedbot import *
+from voice.TextToSpeech import TTS
+from voice.SpeechToText import STT
 
 def main_page():
     # Проверяем, если в сессии нет chat_id, создаем новый уникальный идентификатор.
@@ -93,6 +96,12 @@ def main_page():
             col1_input, col2_input = st.columns([9, 1])
             with col1_input:
                 prompt = st.chat_input("Расскажите о своей проблеме...")
+                voice_message = st.audio_input("Голосовое сообщение:")
+
+                if voice_message:
+                    with st.spinner("Преобразовываем аудио в текст..."):
+                        voice_to_text = STT(voice_message)
+                        prompt = voice_to_text
 
         if prompt:
             message_id = st.session_state.message_id  # Берем текущий message_id.
@@ -112,22 +121,31 @@ def main_page():
                     st.markdown(prompt)
             
             # Генерация ответа от бота.
-            response = f"Ответ на: {prompt}"
+            ai_answer = generate_answer(message=prompt)[-1]
+            response = ai_answer
+            #message_id += 1
+            #assistant_message = {"role": "assistant", "content": response}
+            #st.session_state.messages.append(assistant_message)
+            #save_to_csv(st.session_state.chat_id, message_id, "assistant", response)
+
             message_id += 1
-            assistant_message = {"role": "assistant", "content": response}
+            assistant_message = {"role": "assistant", "content": ai_answer}
             st.session_state.messages.append(assistant_message)
-            save_to_csv(st.session_state.chat_id, message_id, "assistant", response)
+            save_to_csv(st.session_state.chat_id, message_id, "assistant", ai_answer)
             
             # Отображаем ответ бота.
             with chat_container:
                 with st.chat_message("assistant"):
-                    st.markdown(response)
+                    st.write(response)
+
+                with st.spinner("Генерируем озвучку..."):
+                    TTS(ai_answer)
+                st.audio("output.wav")
             
             # Обновляем message_id для следующего сообщения.
             st.session_state.message_id = message_id + 1
 
     # Во второй колонке отображаем изображение и заголовок.
     with col2:
-        image_path = "red-cross.jpeg"
-        st.image(image_path, caption="Напоминалки от бота сюда.")  # Показываем изображение.
-        st.title("Либо сюда.")  # Заголовок.
+        image_path = "gui/red-cross.png"
+        st.image(image_path, caption='Добро пожаловать в бота медицинской помощи!')  # Показываем изображение.

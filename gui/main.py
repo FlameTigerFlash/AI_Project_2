@@ -3,6 +3,10 @@ from login_page import login_page
 from main_page import main_page
 from reg_page import registration_page
 import time
+import os
+
+os.environ["GROQ_API_KEY"] = "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"
+GigaChatKey = 'OThhMGI0MDctYzA5ZS00N2Y3LWIxYTYtOTM4NmZkZGU5YmY4Ojk5NjgwYzNiLTY4NjUtNDdhMi1hYzY2LTBlYTZmYzlkMWVkMg=='
 
 def main():
     if "page" not in st.session_state:
