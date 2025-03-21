@@ -2,7 +2,7 @@ import torch
 import soundfile as sf
 
 
-def TTS():
+def TTS(text: str, put_acccent:bool = False):
     # Загрузка модели
     model, _ = torch.hub.load(
         repo_or_dir='snakers4/silero-models',
@@ -13,10 +13,10 @@ def TTS():
 
     # Параметры для улучшения естественности
     audio = model.apply_tts(
-        text="Условие: Среди 6 ключей три подходят к двери. Ключи пробуют один за одним, пока не откроют дверь. Найти закон распределения числа опробованных ключей. Вычислить математическое ожидание и дисперсию числа опробованных ключей.",
+        text=text,
         speaker='baya',  # baya, aidar, kseniya, xenia, eugene, random(never)
         sample_rate=48000,
-        put_accent=True,    
+        put_accent=put_acccent,    
         put_yo=True,        
     )
 
