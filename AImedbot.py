@@ -29,6 +29,7 @@ def generate_answer(name=None, gender=None, age=None, weight=None, height=None, 
 
   Если ты считаешь информацию о пользователе недостаточной, не стесняйся задавать ему дополнительные вопросы для заполнения характеристики пользователя. Старайся не сильно менять характеристику за раз, а также сохранять актуальную информацию.
 
+  Сообщение: {message}
   """
 
   @tool
@@ -61,8 +62,10 @@ def generate_answer(name=None, gender=None, age=None, weight=None, height=None, 
 
   config = {"configurable": {"thread_id": "abc123"}}
 
+  to_go = prompt_template.format(name=name, age=age, gender=gender, weight=weight, height=height, allergies=allergies, personal_file=personal_file, message=message)
+
   result = agent.invoke({
-    "messages": [{"role": "user", "content": message}]
+    "messages": [{"role": "user", "content": to_go}]
 },
   config)
   #print(result)
