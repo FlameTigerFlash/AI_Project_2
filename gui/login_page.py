@@ -16,3 +16,7 @@ def login_page():
         if st.button("Поддержка"):
             st.warning("Свяжитесь с поддержкой..."
                 "       tg: @KALBkabiir")
+
+    if login:
+        with open(f"{login}.txt", "w", encoding="utf-8") as file:
+            login = file.write(login)

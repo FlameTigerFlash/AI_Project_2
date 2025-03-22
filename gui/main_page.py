@@ -23,9 +23,35 @@ def main_page():
     if "messages" not in st.session_state:
         st.session_state.messages = []
 
+    def find_txt_file(folder_path):
+        # Перебираем все файлы в папке
+        for filename in os.listdir(folder_path):
+            # Проверяем, что файл имеет расширение .txt
+            if filename.endswith(".txt"):
+                # Возвращаем имя файла без расширения
+                login = os.path.splitext(filename)[0]
+
+                return login
+            
+    login = find_txt_file(os.getcwd())
+
+    def get_user_info(login):
+        path = f'users/{login}/info.csv'
+        try:
+            with open(path, mode='r', encoding='utf-8') as file:
+                reader = csv.DictReader(file)
+                first_row = next(reader, None)
+                return first_row if first_row else {}
+        except FileNotFoundError:
+            print(f"File not found: {path}")
+            return {}
+        except Exception as e:
+            print(f"Error reading file: {e}")
+            return {}
+
     # Функция для сохранения сообщений в CSV-файл.
-    def save_to_csv(chat_id, message_id, role, content):
-        chat_file = f"{chat_id}.csv"  # Имя файла - это chat_id с расширением .csv.
+    def save_to_csv(chat_id, message_id, role, content, login):
+        chat_file = f"users/{login}/{chat_id}.csv"  # Имя файла - это chat_id с расширением .csv.
         new_entry = pd.DataFrame([{"MessageID": message_id, "Role": role, "Content": content}])  # Формируем новый элемент данных.
         if os.path.exists(chat_file):  # Если файл уже существует, добавляем данные в конец.
             new_entry.to_csv(chat_file, mode='a', header=False, index=False, encoding="utf-8")
@@ -33,8 +59,8 @@ def main_page():
             new_entry.to_csv(chat_file, mode='w', header=True, index=False, encoding="utf-8")
 
     # Функция для загрузки истории чата из CSV-файла.
-    def load_chat_history(chat_id):
-        chat_file = f"{chat_id}.csv"  # Имя файла - это chat_id с расширением .csv.
+    def load_chat_history(chat_id, login):
+        chat_file = f"users/{login}/{chat_id}.csv"  # Имя файла - это chat_id с расширением .csv.
         if os.path.exists(chat_file):  # Если файл существует, загружаем его.
             return pd.read_csv(chat_file, encoding="utf-8")
         return None  # Если файла нет, возвращаем None.
@@ -47,12 +73,12 @@ def main_page():
         
         if st.session_state.menu_open:
             # Получаем список файлов чатов (CSV) в текущей директории.
-            chat_files = [f.split(".")[0] for f in os.listdir() if f.endswith(".csv")]
+            chat_files = [f.split(".")[0] for f in os.listdir(f'users/{login}') if f.endswith(".csv") and not f.startswith("info")]
             chat_names = []  # Список для хранения имен чатов.
 
             # Загружаем первый запрос чата из каждого файла.
             for chat_id in chat_files:
-                df = load_chat_history(chat_id)
+                df = load_chat_history(chat_id, login)
                 if df is not None and not df.empty:
                     first_message = df.iloc[0]["Content"]
                     chat_names.append((chat_id, first_message))
@@ -67,7 +93,7 @@ def main_page():
                     # Если нажали кнопку "Открыть чат", загружаем историю и отображаем сообщения.
                     st.session_state.chat_id = selected_chat_id
                     st.session_state.messages = []
-                    history = load_chat_history(selected_chat_id)
+                    history = load_chat_history(selected_chat_id, login)
                     if history is not None:
                         st.session_state.messages = [{"role": row["Role"], "content": row["Content"]} for _, row in history.iterrows()]
 
@@ -93,7 +119,7 @@ def main_page():
         
         # Поле для ввода сообщения.
         with st.container():
-            col1_input, col2_input = st.columns([9, 1])
+            col1_input, col2_input = st.columns([15, 2])
             with col1_input:
                 prompt = st.chat_input("Расскажите о своей проблеме...")
                 voice_message = st.audio_input("Голосовое сообщение:")
@@ -101,19 +127,19 @@ def main_page():
                 if voice_message:
                     with st.spinner("Преобразовываем аудио в текст..."):
                         voice_to_text = STT(voice_message)
-                        prompt = voice_to_text
+                        prompt = voice_to_text  
 
         if prompt:
             message_id = st.session_state.message_id  # Берем текущий message_id.
             if st.session_state.chat_id:
-                history = load_chat_history(st.session_state.chat_id)
+                history = load_chat_history(st.session_state.chat_id, login)
                 if history is not None and not history.empty:
                     message_id = int(history["MessageID"].max()) + 1  # Получаем максимальный ID сообщения и увеличиваем на 1.
             
             # Добавляем сообщение пользователя.
             user_message = {"role": "user", "content": prompt}
             st.session_state.messages.append(user_message)
-            save_to_csv(st.session_state.chat_id, message_id, "user", prompt)
+            save_to_csv(st.session_state.chat_id, message_id, "user", prompt, login)
             
             # Отображаем сообщение пользователя.
             with chat_container:
@@ -121,6 +147,7 @@ def main_page():
                     st.markdown(prompt)
             
             # Генерация ответа от бота.
+            user_data = get_user_info(login)
             ai_answer = generate_answer(message=prompt)[-1]
             response = ai_answer
             #message_id += 1
@@ -131,7 +158,7 @@ def main_page():
             message_id += 1
             assistant_message = {"role": "assistant", "content": ai_answer}
             st.session_state.messages.append(assistant_message)
-            save_to_csv(st.session_state.chat_id, message_id, "assistant", ai_answer)
+            save_to_csv(st.session_state.chat_id, message_id, "assistant", ai_answer, login)
             
             # Отображаем ответ бота.
             with chat_container:

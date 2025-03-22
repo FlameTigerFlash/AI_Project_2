@@ -7,12 +7,20 @@ from langchain_groq import ChatGroq
 from langchain_community.tools import DuckDuckGoSearchRun
 from langgraph.checkpoint.memory import MemorySaver
 from langchain_gigachat.chat_models import GigaChat
+from RAG.rag import *
 
 memory = MemorySaver()
 
+rag_executor = RAG(embeddings=
+    HuggingFaceEmbeddings(
+        model_name="cointegrated/LaBSE-en-ru",
+        model_kwargs={"device": "cpu"},
+        encode_kwargs={"normalize_embeddings": True}
+    ), path=r'../RAG/vector_store')
 
 def generate_answer(name=None, gender=None, age=None, weight=None, height=None, allergies=None, personal_file=None, message=""):
-  llm = GigaChat(credentials="OThhMGI0MDctYzA5ZS00N2Y3LWIxYTYtOTM4NmZkZGU5YmY4Ojk5NjgwYzNiLTY4NjUtNDdhMi1hYzY2LTBlYTZmYzlkMWVkMg==",
+  llm = GigaChat(
+    credentials="OThhMGI0MDctYzA5ZS00N2Y3LWIxYTYtOTM4NmZkZGU5YmY4Ojk5NjgwYzNiLTY4NjUtNDdhMi1hYzY2LTBlYTZmYzlkMWVkMg==",
     scope="GIGACHAT_API_PERS",
     model="GigaChat",
     verify_ssl_certs=False,
@@ -30,7 +38,7 @@ def generate_answer(name=None, gender=None, age=None, weight=None, height=None, 
 
   В характеристике должна содержаться информация по типу физической активности, болезней (в том числе хронических), качества сна, пищевых предпочтений и прочая полезная информация
 
-  Характеристика: {personal_file}
+  Характеристика: 
 
   Если ты считаешь информацию о пользователе недостаточной, не стесняйся задавать ему дополнительные вопросы для заполнения характеристики пользователя. Старайся не сильно менять характеристику за раз, а также сохранять актуальную информацию.
 
@@ -47,9 +55,33 @@ def generate_answer(name=None, gender=None, age=None, weight=None, height=None, 
   @tool
   def rag_agent_tool(prompt: str) -> str:
     """Возвращает релевантные фрагменты информации по различным медицинским источникам. Для получения отрывка текста нужно ввести прямой запрос, на который нужен ответ"""
+    print(f"Используем инструмент RAG. Промпт: {prompt}")
+    list_of_files = ", ".join(os.listdir(r"../RAG/vector_store"))
+    #print(list_of_files)
+    llmprompt = f'''
+    Твоя задача - выбрать ОДИН из файлов, указанных ниже и вывести текстом ТОЛЬКО ТОЧНОЕ НАЗВАНИЕ файла, наиболее подходящего по смыслу для вопроса, написанного ниже.
+    Список файлов: {list_of_files}
+    Текст запроса: {prompt}
+    Выводом должно быть ТОЛЬКО НАЗВАНИЕ НАИБОЛЕЕ ПОДХОДЯЩЕГО ФАЙЛА ИЗ ВЫБОРКИ, ДАЖЕ ЕСЛИ ПОДХОДЯЩЕГО ФАЙЛА НЕТ
+    '''
 
-    answer = 'Сервис сейчас недоступен'
-    return answer
+    llm = GigaChat(
+    credentials="OThhMGI0MDctYzA5ZS00N2Y3LWIxYTYtOTM4NmZkZGU5YmY4Ojk5NjgwYzNiLTY4NjUtNDdhMi1hYzY2LTBlYTZmYzlkMWVkMg==",
+    scope="GIGACHAT_API_PERS",
+    model="GigaChat",
+    verify_ssl_certs=False,
+    streaming=True)
+
+    filename = llm.invoke(llmprompt).content
+    #print(filename)
+    if filename not in os.listdir(r"../RAG/vector_store"):
+      print(filename)
+      print("Инфы нет")
+      return "К сожалению, необходимая информация отсутствует."
+
+    answer = "/n".join([el.page_content for el in rag_executor.retrieve(filename=filename, question=prompt, threshold=0.1)])
+    print(answer)
+    return answer or "Не удалось найти в тексте необходимую информацию"
 
   @tool
   def update_personal_file(updated_profile: str) -> str:
